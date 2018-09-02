@@ -45,3 +45,5 @@ dependencies {
 }
 
 kotlin.experimental.coroutines = 'enable'
+
+task stage(dependsOn: ['installDist'])
