@@ -29,7 +29,13 @@ fun Application.module() {
         masking = false
     }
 
-    val client = HttpClient(Apache)
+    val client = HttpClient(Apache) {
+        engine {
+            this.customizeClient {
+                this.setUserAgent("Titular Game")
+            }
+        }
+    }
     UrlManager.urls = runBlocking { withContext(DefaultDispatcher) {
         println("Getting Images...")
             val jsonContent = client.get<String>("https://www.reddit.com/r/disneyvacation/.json?limit=500")
