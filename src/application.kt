@@ -190,5 +190,10 @@ suspend fun DefaultWebSocketServerSession.handleMessage(uuid: UUID, message: Str
 }
 
 suspend fun DefaultWebSocketServerSession.sendString(str: String) {
-    send(Frame.Text(str))
+    try {
+        send(Frame.Text(str))
+    } catch (t: Throwable) {
+        println(t.localizedMessage)
+    }
+
 }
