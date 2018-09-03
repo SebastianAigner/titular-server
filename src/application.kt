@@ -88,8 +88,8 @@ class Game(val players: MutableSet<Player>) {
     var image: String = "https://via.placeholder.com/600x400"
     val imagesPlayedAlready = mutableListOf<String>()
 
-    val guessTime = 60000
-    val voteTime = 30000
+    val guessTime = System.getenv("GUESS_TIME")?.toInt() ?: 5000
+    val voteTime = System.getenv("VOTE_TIME")?.toInt() ?: 5000
     suspend fun startRound() {
         launch {
             do {
@@ -102,7 +102,7 @@ class Game(val players: MutableSet<Player>) {
             broadcast("IMAGE $image")
             guessAllowed = true
             broadcast("TIME ${guessTime/1000}")
-            delay(guessTime)
+            delay(guessTime?.toInt() ?: 5000)
             guessAllowed = false
             broadcast("VOTENOW")
             broadcast("TIME ${voteTime/1000}")
