@@ -73,7 +73,7 @@ class Game(val players: MutableSet<Player>) {
         }
     }
 
-    var image = UrlManager.urls.shuffled().first()
+
 
     suspend fun addPlayer(p: Player) {
         players.add(p)
@@ -85,8 +85,11 @@ class Game(val players: MutableSet<Player>) {
         }
     }
 
+    var image: String = "https://via.placeholder.com/600x400"
+
     suspend fun startRound() {
         launch {
+            image = UrlManager.urls.shuffled().first()
             broadcast("STARTROUND")
             delay(1000)
             broadcast("IMAGE $image")
