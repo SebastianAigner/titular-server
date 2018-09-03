@@ -31,7 +31,9 @@ fun Application.module() {
 
     val client = HttpClient(Apache)
     UrlManager.urls = runBlocking { withContext(DefaultDispatcher) {
+        println("Getting Images...")
             val jsonContent = client.get<String>("https://www.reddit.com/r/disneyvacation/.json?limit=500")
+        println("Got $jsonContent")
             val redditRegex = Regex("(https:\\/\\/i.\\w{4,6}.\\w{2,3}\\/\\w+.jpg)")
             val urls = redditRegex.findAll(jsonContent).map { it.groupValues.first() }
             urls
