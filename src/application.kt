@@ -38,7 +38,7 @@ fun Application.module() {
     }
     UrlManager.urls = runBlocking { withContext(DefaultDispatcher) {
         println("Getting Images...")
-            val jsonContent = client.get<String>("https://www.reddit.com/r/disneyvacation/.json?limit=500")
+            val jsonContent = client.get<String>("https://www.reddit.com/r/disneyvacation/top/.json?sort=top&t=all&limit=500")
         println("Got $jsonContent")
             val redditRegex = Regex("(https:\\/\\/i.\\w{4,6}.\\w{2,3}\\/\\w+.jpg)")
             val urls = redditRegex.findAll(jsonContent).map { it.groupValues.first() }
@@ -53,7 +53,7 @@ fun Application.module() {
 
         webSocket("/myws/echo") {
             val uuid = UUID.randomUUID()
-            send(Frame.Text("Hi from server. You are $uuid"))
+            send(Frame.Text("UUID $uuid"))
             while (true) {
                 val frame = incoming.receive()
                 if (frame is Frame.Text) {
@@ -86,21 +86,28 @@ class Game(val players: MutableSet<Player>) {
     }
 
     var image: String = "https://via.placeholder.com/600x400"
+    val imagesPlayedAlready = mutableListOf<String>()
 
+    val guessTime = 60000
+    val voteTime = 30000
     suspend fun startRound() {
         launch {
-            image = UrlManager.urls.shuffled().first()
+            do {
+                image = UrlManager.urls.shuffled().first()
+            } while(imagesPlayedAlready.contains(image))
+            //todo: abort condition if all images have been played through
+            imagesPlayedAlready.add(image)
             broadcast("STARTROUND")
             delay(1000)
             broadcast("IMAGE $image")
             guessAllowed = true
-            broadcast("TIME 20")
-            delay(20000)
+            broadcast("TIME ${guessTime/1000}")
+            delay(guessTime)
             guessAllowed = false
             broadcast("VOTENOW")
-            broadcast("TIME 20")
+            broadcast("TIME ${voteTime/1000}")
             voteAllowed = true
-            delay(20000)
+            delay(voteTime)
             voteAllowed = false
             broadcast("VOTEEND")
             //evaluate votes
