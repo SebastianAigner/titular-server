@@ -88,8 +88,8 @@ class Game(val players: MutableSet<Player>) {
     var image: String = "https://via.placeholder.com/600x400"
     val imagesPlayedAlready = mutableListOf<String>()
 
-    val guessTime = System.getenv("GUESS_TIME")?.toInt() ?: 5000
-    val voteTime = System.getenv("VOTE_TIME")?.toInt() ?: 5000
+    val guessTime = System.getenv("GUESS_TIME")?.toInt() ?: 5
+    val voteTime = System.getenv("VOTE_TIME")?.toInt() ?: 5
     suspend fun startRound() {
         launch {
             do {
@@ -98,16 +98,24 @@ class Game(val players: MutableSet<Player>) {
             //todo: abort condition if all images have been played through
             imagesPlayedAlready.add(image)
             broadcast("STARTROUND")
-            delay(1000)
             broadcast("IMAGE $image")
             guessAllowed = true
-            broadcast("TIME ${guessTime/1000}")
-            delay(guessTime?.toInt() ?: 5000)
+            broadcast("TIME $guessTime")
+            var timeRemaining = guessTime
+            while(timeRemaining > 0 && players.count() != guesses.count()) {
+                println("players: ${players.count()}, guesses: ${guesses.count()}")
+                timeRemaining--
+                delay(1000)
+            }
             guessAllowed = false
             broadcast("VOTENOW")
-            broadcast("TIME ${voteTime/1000}")
+            broadcast("TIME $voteTime")
             voteAllowed = true
-            delay(voteTime)
+            timeRemaining = voteTime
+            while(timeRemaining > 0 && players.count() != votes.count()) {
+                timeRemaining--
+                delay(1000)
+            }
             voteAllowed = false
             broadcast("VOTEEND")
             //evaluate votes
@@ -125,9 +133,10 @@ class Game(val players: MutableSet<Player>) {
     var guessAllowed = false
     var voteAllowed = false
 
-    fun handleGuess(p: Player, s: String) {
+    suspend fun handleGuess(p: Player, s: String) {
         if(!guessAllowed) return
         guesses[p] = s
+        broadcast("GUESS ${p.uuid} $s")
     }
 
     fun getPlayerFromUUID(uuid: UUID) = players.first { it.uuid.equals(uuid) }
@@ -180,7 +189,8 @@ suspend fun DefaultWebSocketServerSession.handleMessage(uuid: UUID, message: Str
                 }
             }
             "guess" -> {
-                player.game!!.broadcast("GUESS ${player.uuid} ${message.drop(6)}")
+                player.game!!.handleGuess(player, message.drop(6))
+
             }
             "start" -> {
                 player.game?.startRound()
@@ -189,7 +199,7 @@ suspend fun DefaultWebSocketServerSession.handleMessage(uuid: UUID, message: Str
                 player.game?.broadcast(message)
             }
             "vote" -> {
-                println("${tokenized[1]}")
+                println(tokenized[1])
                 player.game?.vote(UUID.fromString(tokenized[1]))
             }
         }
