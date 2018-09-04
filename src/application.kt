@@ -115,7 +115,7 @@ class Game(val players: MutableSet<Player>) {
             broadcast("TIME $voteTime")
             voteAllowed = true
             timeRemaining = voteTime
-            while(timeRemaining > 0 && players.count() != votes.count()) {
+            while(timeRemaining > 0 && players.count() != votes.values.sum()) {
                 timeRemaining--
                 delay(1000)
             }
