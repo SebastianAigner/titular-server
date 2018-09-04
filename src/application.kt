@@ -17,7 +17,27 @@ import java.util.*
 fun main(args: Array<String>): Unit = io.ktor.server.netty.DevelopmentEngine.main(args)
 
 object UrlManager{
-    var urls: List<String> = emptyList()
+    var urls: List<String>
+    init {
+        urls = runBlocking { withContext(DefaultDispatcher) {
+            println("Getting Images...")
+            val jsonContent = HttpClientManager.client.get<String>("https://www.reddit.com/r/disneyvacation/top/.json?sort=top&t=all&limit=500")
+            println("Got $jsonContent")
+            val redditRegex = Regex("(https:\\/\\/i.\\w{4,6}.\\w{2,3}\\/\\w+.jpg)")
+            val urls = redditRegex.findAll(jsonContent).map { it.groupValues.first() }
+            urls
+        } }.toList()
+    }
+}
+
+object HttpClientManager {
+    val client = HttpClient(Apache) {
+        engine {
+            this.customizeClient {
+                this.setUserAgent("Titular Game")
+            }
+        }
+    }
 }
 
 @Suppress("unused") // Referenced in application.conf
@@ -29,23 +49,7 @@ fun Application.module() {
         masking = false
     }
 
-    val client = HttpClient(Apache) {
-        engine {
-            this.customizeClient {
-                this.setUserAgent("Titular Game")
-            }
-        }
-    }
-    UrlManager.urls = runBlocking { withContext(DefaultDispatcher) {
-        println("Getting Images...")
-            val jsonContent = client.get<String>("https://www.reddit.com/r/disneyvacation/top/.json?sort=top&t=all&limit=500")
-        println("Got $jsonContent")
-            val redditRegex = Regex("(https:\\/\\/i.\\w{4,6}.\\w{2,3}\\/\\w+.jpg)")
-            val urls = redditRegex.findAll(jsonContent).map { it.groupValues.first() }
-            urls
-    } }.toList()
-
-
+    println("Setting up routing...")
     routing {
         get("/") {
             call.respondText("HELLO WORLD!", contentType = ContentType.Text.Plain)
@@ -53,7 +57,6 @@ fun Application.module() {
 
         webSocket("/myws/echo") {
             val uuid = UUID.randomUUID()
-            send(Frame.Text("UUID $uuid"))
             while (true) {
                 val frame = incoming.receive()
                 if (frame is Frame.Text) {
@@ -160,7 +163,7 @@ suspend fun DefaultWebSocketServerSession.handleMessage(uuid: UUID, message: Str
     if(player == null) {
         if(tokenized[0].toLowerCase() == "name") {
                 allPlayers[uuid] = Player(uuid, this, tokenized[1], null, 0)
-                sendString("Hello, ${tokenized[1]}.")
+                sendString("UUID $uuid")
         }
         return
     }
