@@ -29,7 +29,7 @@ object RedditManager {
         if(cached.containsKey(g) && (cached[g]?.count() ?: 0) > 10) {
             return cached[g]!!
         }
-        val paginator = redditClient.subreddit("disneyvacation").posts().sorting(SubredditSort.TOP).timePeriod(TimePeriod.ALL).limit(500).build()
+        val paginator = redditClient.subreddit(g.subreddit).posts().sorting(SubredditSort.TOP).timePeriod(TimePeriod.ALL).limit(500).build()
         val images = mutableListOf<String>()
         val iter = paginator.iterator()
         while(iter.hasNext() && images.count() < g.limit) {
