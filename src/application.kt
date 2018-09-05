@@ -35,7 +35,11 @@ fun Application.module() {
         maxFrameSize = Long.MAX_VALUE
         masking = false
     }
-
+    launch {
+        GameMode.values().forEach {
+            RedditManager.prefetch(it)
+        }
+    }
     println("Setting up routing...")
     routing {
         get("/") {

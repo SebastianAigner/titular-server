@@ -4,14 +4,6 @@ import kotlinx.coroutines.experimental.delay
 import kotlinx.coroutines.experimental.launch
 import java.util.*
 
-enum class GameMode(val url: String) {
-    TOP_ALL_TIME("https://www.reddit.com/r/disneyvacation/top/.json?sort=top&t=all&limit=500"),
-    TOP_THIS_MONTH("https://www.reddit.com/r/disneyvacation/top/.json?sort=top&t=month&limit=500"),
-    TOP_THIS_WEEK("https://www.reddit.com/r/disneyvacation/top/.json?sort=top&t=week&limit=500"),
-    HOT("https://www.reddit.com/r/disneyvacation/.json?limit=500"),
-    HMMM("https://www.reddit.com/r/hmmm/top/.json?sort=top&t=all&limit=500"),
-    NOTDISNEY_ALL_TIME("https://www.reddit.com/r/notdisneyvacation/top/.json?sort=top&t=all&limit=500")
-}
 
 class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_TIME) {
     suspend fun broadcast(str: String) {
@@ -60,9 +52,8 @@ class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_T
         launch {
             inRound = true
             broadcast("NOINTERACT")
-            println("Launching round with corpus of ${UrlManager.getUrls(gamemode).size} images")
             do {
-                image = UrlManager.getUrls(gamemode).shuffled().first()
+                image = RedditManager.getImages(gamemode).shuffled().first()
             } while(imagesPlayedAlready.contains(image))
             //todo: abort condition if all images have been played through
             imagesPlayedAlready.add(image)
@@ -149,7 +140,7 @@ class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_T
         } catch(i: Throwable) {
             GameMode.TOP_ALL_TIME
         }
-        UrlManager.prefetch(gamemode)
+        //RedditManager.prefetch(gamemode)
         broadcast("GAMEMODE $gamemode")
     }
 }
