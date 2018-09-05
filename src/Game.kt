@@ -16,27 +16,35 @@ enum class GameMode(val url: String) {
 class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_TIME) {
     suspend fun broadcast(str: String) {
         players.forEach {
-            it.socket.sendString(str, it.uuid)
+            it.socket.sendString(str)
         }
     }
 
-    suspend fun addPlayer(p: Player) {
+    fun addPlayer(p: Player) {
         players += p
         p.game = this
-        broadcast("PLAYER ${p.uuid} ${p.name} ${p.points}")
+        launch {
+            broadcast("PLAYER ${p.uuid} ${p.name} ${p.points}")
+        }
+        println("Adding Player, inround:$inRound")
         if(inRound) {
-            p.socket.sendString("STARTROUND", p.uuid)
-            p.socket.sendString("IMAGE $image", p.uuid)
-            p.socket.sendString("TIME $timeRemaining", p.uuid)
-            if(voteAllowed) {
-                p.socket.sendString("VOTENOW", p.uuid) //todo: provide function like p.sendViaSocket() to get rid of all the p.uuid stuff
+            println("### MESSAGING ${p.name}!")
+            launch {
+                p.socket.sendString("STARTROUND")
+                p.socket.sendString("IMAGE $image")
+                p.socket.sendString("TIME $timeRemaining")
+                if(voteAllowed) {
+                    p.socket.sendString("VOTENOW") //todo: provide function like p.sendViaSocket() to get rid of all the p.uuid stuff
+                }
             }
         }
 
-
-        players.forEach {
-            p.socket.sendString("PLAYER ${it.uuid} ${it.name} ${it.points}", p.uuid)
+        launch {
+            players.forEach {
+                p.socket.sendString("PLAYER ${it.uuid} ${it.name} ${it.points}")
+            }
         }
+
     }
 
     var image: String = "https://via.placeholder.com/600x400"
@@ -46,7 +54,9 @@ class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_T
     val voteTime = System.getenv("VOTE_TIME")?.toInt() ?: 5
     var timeRemaining = 0
     var inRound = false
+
     suspend fun startRound() {
+        if(inRound) return
         launch {
             inRound = true
             broadcast("NOINTERACT")

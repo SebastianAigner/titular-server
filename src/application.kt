@@ -3,7 +3,6 @@ package io.sebi
 import io.ktor.application.*
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.apache.Apache
-import io.ktor.client.request.get
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.http.*
@@ -11,8 +10,6 @@ import io.ktor.websocket.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.http.cio.websocket.Frame
 import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.channels.ClosedSendChannelException
-import kotlinx.coroutines.experimental.time.delay
 import java.time.*
 import java.util.*
 
@@ -62,7 +59,7 @@ fun Application.module() {
                         allPlayers.remove(uuid)
                     }
                     allPlayers.forEach {
-                        it.value.socket.sendString("NOPLAYERS ${allPlayers.count()}", it.key)
+                        it.value.socket.sendString("NOPLAYERS ${allPlayers.count()}")
                     }
                     return@webSocket
                 }
@@ -81,7 +78,7 @@ val games = mutableMapOf<String, Game>()
 
 suspend fun updatePlayerNumbers() {
     allPlayers.forEach {
-        it.value.socket.sendString("NOPLAYERS ${allPlayers.count()}", it.key)
+        it.value.socket.sendString("NOPLAYERS ${allPlayers.count()}")
     }
 }
 
@@ -104,11 +101,11 @@ suspend fun DefaultWebSocketServerSession.handleMessage(uuid: UUID, message: Str
     if(player == null) {
         if(tokenized[0].toLowerCase() == "name") {
                 allPlayers[uuid] = Player(uuid, this, tokenized[1], null, 0)
-                sendString("UUID $uuid", uuid)
+                sendString("UUID $uuid")
                 updatePlayerNumbers()
                 val lobbies = games.filter { it.value.players.count() > 0 }.toList().sortedByDescending { it.second.players.count() }.map { Pair(it.first, it.second.players.count()) }
                 lobbies.forEach {
-                    sendString("LOBBY ${it.first} ${it.second}", uuid)
+                    sendString("LOBBY ${it.first} ${it.second}")
                 }
         }
         return
@@ -116,26 +113,26 @@ suspend fun DefaultWebSocketServerSession.handleMessage(uuid: UUID, message: Str
     else {
         when(tokenized[0].toLowerCase()) {
             "whoami" -> {
-                sendString("PLAYER ${player.uuid} ${player.name} ${player.points}", player.uuid)
+                sendString("PLAYER ${player.uuid} ${player.name} ${player.points}")
             }
             "game" -> {
                 val game = games.getOrPut(tokenized[1]) {
                     Game(mutableSetOf())
                 }
                 game.addPlayer(player)
-                sendString("Welcome to Game #${tokenized[1]}", player.uuid)
-                sendString("JOINED ${tokenized[1]}", player.uuid)
+                sendString("Welcome to Game #${tokenized[1]}")
+                sendString("JOINED ${tokenized[1]}")
             }
         }
         if(player.game == null) {
-            sendString("not in game.", player.uuid)
+            sendString("not in game.")
             return
         }
         when(tokenized[0].toLowerCase()) {
             "lp" -> {
                 val players = (player.game?.players) ?: emptyList<Player>()
                 players.forEach {
-                    sendString("PLAYER ${it.uuid} ${it.name} ${it.points}", player.uuid)
+                    sendString("PLAYER ${it.uuid} ${it.name} ${it.points}")
                 }
             }
             "gamemode" -> {
@@ -159,10 +156,7 @@ suspend fun DefaultWebSocketServerSession.handleMessage(uuid: UUID, message: Str
     }
 }
 
-suspend fun DefaultWebSocketServerSession.sendString(str: String, uuid: UUID) {
-    try {
-        send(Frame.Text(str))
-    } catch (t: Throwable) {
-        println("Socket send failed: " + t.localizedMessage + "$t")
-    }
+suspend fun DefaultWebSocketServerSession.sendString(str: String) {
+    println("Sending: $str")
+    send(Frame.Text(str))
 }
