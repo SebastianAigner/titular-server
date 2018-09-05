@@ -58,6 +58,9 @@ fun Application.module() {
                             it.removePlayer(uuid)
                         }
                     }
+                    if(allPlayers.containsKey(uuid)) {
+                        allPlayers.remove(uuid)
+                    }
                     allPlayers.forEach {
                         it.value.socket.sendString("NOPLAYERS ${allPlayers.count()}", it.key)
                     }
@@ -160,10 +163,6 @@ suspend fun DefaultWebSocketServerSession.sendString(str: String, uuid: UUID) {
     try {
         send(Frame.Text(str))
     } catch (t: Throwable) {
-        if(t is ClosedSendChannelException) {
-            allPlayers[uuid]?.game?.removePlayer(uuid)
-            allPlayers.remove(uuid)
-        }
         println("Socket send failed: " + t.localizedMessage + "$t")
     }
 }
