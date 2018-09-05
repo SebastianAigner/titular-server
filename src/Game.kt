@@ -20,30 +20,30 @@ class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_T
         }
     }
 
-    fun addPlayer(p: Player) {
+    suspend fun addPlayer(p: Player) {
         players += p
         p.game = this
-        launch {
+
             broadcast("PLAYER ${p.uuid} ${p.name} ${p.points}")
-        }
+
         println("Adding Player, inround:$inRound")
         if(inRound) {
             println("### MESSAGING ${p.name}!")
-            launch {
+
                 p.socket.sendString("STARTROUND")
                 p.socket.sendString("IMAGE $image")
                 p.socket.sendString("TIME $timeRemaining")
                 if(voteAllowed) {
                     p.socket.sendString("VOTENOW") //todo: provide function like p.sendViaSocket() to get rid of all the p.uuid stuff
                 }
-            }
+
         }
 
-        launch {
+
             players.forEach {
                 p.socket.sendString("PLAYER ${it.uuid} ${it.name} ${it.points}")
             }
-        }
+
 
     }
 
