@@ -119,9 +119,9 @@ suspend fun DefaultWebSocketServerSession.handleMessage(uuid: UUID, message: Str
                 val game = games.getOrPut(tokenized[1]) {
                     Game(mutableSetOf())
                 }
-                game.addPlayer(player)
                 sendString("Welcome to Game #${tokenized[1]}")
                 sendString("JOINED ${tokenized[1]}")
+                game.addPlayer(player)
             }
         }
         if(player.game == null) {
