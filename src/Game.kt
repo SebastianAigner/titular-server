@@ -9,7 +9,8 @@ enum class GameMode(val url: String) {
     TOP_THIS_MONTH("https://www.reddit.com/r/disneyvacation/top/.json?sort=top&t=month&limit=500"),
     TOP_THIS_WEEK("https://www.reddit.com/r/disneyvacation/top/.json?sort=top&t=week&limit=500"),
     HOT("https://www.reddit.com/r/disneyvacation/.json?limit=500"),
-    HMMM("https://www.reddit.com/r/hmmm/top/.json?sort=top&t=all&limit=500")
+    HMMM("https://www.reddit.com/r/hmmm/top/.json?sort=top&t=all&limit=500"),
+    NOTDISNEY_ALL_TIME("https://www.reddit.com/r/notdisneyvacation/top/.json?sort=top&t=all&limit=500")
 }
 
 class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_TIME) {
@@ -48,11 +49,13 @@ class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_T
     suspend fun startRound() {
         launch {
             inRound = true
+            broadcast("NOINTERACT")
             do {
                 image = UrlManager.getUrls(gamemode).shuffled().first()
             } while(imagesPlayedAlready.contains(image))
             //todo: abort condition if all images have been played through
             imagesPlayedAlready.add(image)
+            broadcast("INTERACT")
             broadcast("STARTROUND")
             broadcast("IMAGE $image")
             guessAllowed = true
@@ -130,6 +133,7 @@ class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_T
     }
 
     suspend fun changeGameMode(newGameMode: String) {
+        if(inRound) return
         gamemode = try {
             GameMode.valueOf(newGameMode)
         } catch(i: Throwable) {
