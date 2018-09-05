@@ -118,6 +118,15 @@ class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_T
         println("now players ${players.size}")
         broadcast("PLAYER_LEAVE $uuid")
         allPlayers.remove(uuid)
+        checkIfEmpty()
+    }
+
+    private fun checkIfEmpty() {
+        if(players.isEmpty()) {
+            println("Removing game from rotation. Previously: ${games.count()} games.")
+            games.remove(games.filter { it.value == this }.map { it.key }.first())
+            println("Now: ${games.count()} games.")
+        }
     }
 
     suspend fun changeGameMode(newGameMode: String) {
