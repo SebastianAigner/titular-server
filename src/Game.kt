@@ -120,7 +120,6 @@ class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_T
         players = players.filterNot { it.uuid == uuid }.toSet()
         println("now players ${players.size}")
         broadcast("PLAYER_LEAVE $uuid")
-        allPlayers.remove(uuid)
         checkIfEmpty()
     }
 

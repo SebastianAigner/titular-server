@@ -12,6 +12,7 @@ import io.ktor.http.cio.websocket.*
 import io.ktor.http.cio.websocket.Frame
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.channels.ClosedSendChannelException
+import kotlinx.coroutines.experimental.time.delay
 import java.time.*
 import java.util.*
 
@@ -47,7 +48,21 @@ fun Application.module() {
         webSocket("/myws/echo") {
             val uuid = UUID.randomUUID()
             while (true) {
-                val frame = incoming.receive()
+                val frame = try {
+                    incoming.receive()
+                }
+                catch (e: Exception) {
+                    println("Hit an exception on our way! " + e.localizedMessage)
+                    allPlayers[uuid]?.let {
+                        it.game?.let {
+                            it.removePlayer(uuid)
+                        }
+                    }
+                    allPlayers.forEach {
+                        it.value.socket.sendString("NOPLAYERS ${allPlayers.count()}", it.key)
+                    }
+                    return@webSocket
+                }
                 if (frame is Frame.Text) {
                     val txt = frame.readText()
                     handleMessage(uuid, txt)
@@ -55,19 +70,43 @@ fun Application.module() {
             }
         }
     }
+    PlayerNumberUpdater.run()
 }
 
 val allPlayers = mutableMapOf<UUID, Player>()
 val games = mutableMapOf<String, Game>()
 
+suspend fun updatePlayerNumbers() {
+    allPlayers.forEach {
+        it.value.socket.sendString("NOPLAYERS ${allPlayers.count()}", it.key)
+    }
+}
+
+object PlayerNumberUpdater {
+    fun run() {
+        launch {
+            while(true) {
+                delay(5000)
+                updatePlayerNumbers()
+            }
+        }
+    }
+}
+
 suspend fun DefaultWebSocketServerSession.handleMessage(uuid: UUID, message: String) {
     println("[INCOMING] $message")
+    updatePlayerNumbers()
     val player = allPlayers[uuid]
     val tokenized = message.split(" ")
     if(player == null) {
         if(tokenized[0].toLowerCase() == "name") {
                 allPlayers[uuid] = Player(uuid, this, tokenized[1], null, 0)
                 sendString("UUID $uuid", uuid)
+                updatePlayerNumbers()
+                val lobbies = games.filter { it.value.players.count() > 0 }.toList().sortedByDescending { it.second.players.count() }.map { Pair(it.first, it.second.players.count()) }
+                lobbies.forEach {
+                    sendString("LOBBY ${it.first} ${it.second}", uuid)
+                }
         }
         return
     }
@@ -82,6 +121,7 @@ suspend fun DefaultWebSocketServerSession.handleMessage(uuid: UUID, message: Str
                 }
                 game.addPlayer(player)
                 sendString("Welcome to Game #${tokenized[1]}", player.uuid)
+                sendString("JOINED ${tokenized[1]}", player.uuid)
             }
         }
         if(player.game == null) {
@@ -122,6 +162,7 @@ suspend fun DefaultWebSocketServerSession.sendString(str: String, uuid: UUID) {
     } catch (t: Throwable) {
         if(t is ClosedSendChannelException) {
             allPlayers[uuid]?.game?.removePlayer(uuid)
+            allPlayers.remove(uuid)
         }
         println("Socket send failed: " + t.localizedMessage + "$t")
     }
