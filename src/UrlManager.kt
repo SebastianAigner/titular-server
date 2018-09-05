@@ -1,12 +1,16 @@
 package io.sebi
 
 import io.ktor.client.request.get
-import kotlinx.coroutines.experimental.DefaultDispatcher
-import kotlinx.coroutines.experimental.runBlocking
-import kotlinx.coroutines.experimental.withContext
+import kotlinx.coroutines.experimental.*
 
 object UrlManager{
     var knownUrls: Map<GameMode, List<String>> = mapOf()
+    fun prefetch(g: GameMode) {
+        println("prefetching $g")
+        launch {
+            getUrls(g)
+        }
+    }
     fun getUrls(g: GameMode): List<String> {
         val knownUrl = knownUrls[g]
         if(knownUrl != null) {
@@ -21,8 +25,10 @@ object UrlManager{
                 val urls = redditRegex.findAll(jsonContent).map { it.groupValues.first() }
                 urls
             } }.toList()
-            knownUrls += g to urls
-            if(urls.isEmpty()) {
+            if(!urls.isEmpty()) {
+                knownUrls += g to urls
+            }
+            else {
                 return listOf(fallback)
             }
             return urls

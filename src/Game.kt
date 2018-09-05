@@ -60,6 +60,7 @@ class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_T
         launch {
             inRound = true
             broadcast("NOINTERACT")
+            println("Launching round with corpus of ${UrlManager.getUrls(gamemode).size} images")
             do {
                 image = UrlManager.getUrls(gamemode).shuffled().first()
             } while(imagesPlayedAlready.contains(image))
@@ -148,6 +149,7 @@ class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_T
         } catch(i: Throwable) {
             GameMode.TOP_ALL_TIME
         }
+        UrlManager.prefetch(gamemode)
         broadcast("GAMEMODE $gamemode")
     }
 }
