@@ -16,25 +16,25 @@ class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_T
         players += p
         p.game = this
 
-            broadcast("PLAYER ${p.uuid} ${p.name} ${p.points}")
+        broadcast("PLAYER ${p.uuid} ${p.name} ${p.points}")
 
         println("Adding Player, inround:$inRound")
-        if(inRound) {
+        if (inRound) {
             println("### MESSAGING ${p.name}!")
 
-                p.socket.sendString("STARTROUND")
-                p.socket.sendString("IMAGE $image")
-                p.socket.sendString("TIME $timeRemaining")
-                if(voteAllowed) {
-                    p.socket.sendString("VOTENOW") //todo: provide function like p.sendViaSocket() to get rid of all the p.uuid stuff
-                }
+            p.socket.sendString("STARTROUND")
+            p.socket.sendString("IMAGE $image")
+            p.socket.sendString("TIME $timeRemaining")
+            if (voteAllowed) {
+                p.socket.sendString("VOTENOW") //todo: provide function like p.sendViaSocket() to get rid of all the p.uuid stuff
+            }
 
         }
 
 
-            players.forEach {
-                p.socket.sendString("PLAYER ${it.uuid} ${it.name} ${it.points}")
-            }
+        players.forEach {
+            p.socket.sendString("PLAYER ${it.uuid} ${it.name} ${it.points}")
+        }
 
 
     }
@@ -48,13 +48,13 @@ class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_T
     var inRound = false
 
     suspend fun startRound() {
-        if(inRound) return
+        if (inRound) return
         launch {
             inRound = true
             broadcast("NOINTERACT")
             do {
                 image = RedditManager.getImages(gamemode).shuffled().first()
-            } while(imagesPlayedAlready.contains(image))
+            } while (imagesPlayedAlready.contains(image))
             //todo: abort condition if all images have been played through
             imagesPlayedAlready.add(image)
             broadcast("INTERACT")
@@ -63,7 +63,7 @@ class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_T
             guessAllowed = true
             broadcast("TIME $guessTime")
             /*var*/ timeRemaining = guessTime
-            while(timeRemaining > 0 && players.count() != guesses.count()) {
+            while (timeRemaining > 0 && players.count() != guesses.count()) {
                 println("players: ${players.count()}, guesses: ${guesses.count()}")
                 timeRemaining--
                 delay(1000)
@@ -74,7 +74,7 @@ class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_T
             broadcast("TIME $voteTime")
             voteAllowed = true
             timeRemaining = voteTime
-            while(timeRemaining > 0 && players.count() != votes.values.sum()) {
+            while (timeRemaining > 0 && players.count() != votes.values.sum()) {
                 timeRemaining--
                 delay(1000)
             }
@@ -97,19 +97,19 @@ class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_T
     var voteAllowed = false
 
     suspend fun handleGuess(p: Player, s: String) {
-        if(!guessAllowed) return
+        if (!guessAllowed) return
         guesses[p] = s
         broadcast("GUESS ${p.uuid} $s")
     }
 
-    fun getPlayerFromUUID(uuid: UUID) = players.first { it.uuid.equals(uuid) }
+    fun getPlayerFromUUID(uuid: UUID) = players.first { it.uuid == uuid }
 
     suspend fun vote(uuid: UUID) {
-        if(!voteAllowed) return
+        if (!voteAllowed) return
         val pl = getPlayerFromUUID(uuid)
         val oldVal = votes.getOrDefault(pl, 0)
         votes[pl] = oldVal + 1
-        println("Voting for player $uuid, now has ${oldVal+1} points")
+        println("Voting for player $uuid, now has ${oldVal + 1} points")
         broadcast("VOTE_INDICATOR")
     }
 
@@ -126,7 +126,7 @@ class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_T
     }
 
     private fun checkIfEmpty() {
-        if(players.isEmpty()) {
+        if (players.isEmpty()) {
             println("Removing game from rotation. Previously: ${games.count()} games.")
             games.remove(games.filter { it.value == this }.map { it.key }.first())
             println("Now: ${games.count()} games.")
@@ -134,10 +134,10 @@ class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_T
     }
 
     suspend fun changeGameMode(newGameMode: String) {
-        if(inRound) return
+        if (inRound) return
         gamemode = try {
             GameMode.valueOf(newGameMode)
-        } catch(i: Throwable) {
+        } catch (i: Throwable) {
             GameMode.TOP_ALL_TIME
         }
         //RedditManager.prefetch(gamemode)

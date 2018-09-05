@@ -1,31 +1,22 @@
 package io.sebi
 
-import io.ktor.application.*
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.apache.Apache
-import io.ktor.response.*
-import io.ktor.routing.*
-import io.ktor.http.*
-import io.ktor.websocket.*
-import io.ktor.http.cio.websocket.*
+import io.ktor.application.Application
+import io.ktor.application.call
+import io.ktor.application.install
+import io.ktor.http.ContentType
 import io.ktor.http.cio.websocket.Frame
-import kotlinx.coroutines.experimental.*
-import java.time.*
+import io.ktor.http.cio.websocket.readText
+import io.ktor.response.respondText
+import io.ktor.routing.get
+import io.ktor.routing.routing
+import io.ktor.websocket.DefaultWebSocketServerSession
+import io.ktor.websocket.webSocket
+import kotlinx.coroutines.experimental.delay
+import kotlinx.coroutines.experimental.launch
+import java.time.Duration
 import java.util.*
 
 fun main(args: Array<String>): Unit = io.ktor.server.netty.DevelopmentEngine.main(args)
-
-
-
-object HttpClientManager {
-    val client = HttpClient(Apache) {
-        engine {
-            this.customizeClient {
-                this.setUserAgent("Titular Game")
-            }
-        }
-    }
-}
 
 @Suppress("unused") // Referenced in application.conf
 fun Application.module() {
@@ -46,20 +37,17 @@ fun Application.module() {
             call.respondText("HELLO WORLD!", contentType = ContentType.Text.Plain)
         }
 
-        webSocket("/myws/echo") {
+        webSocket("/") {
             val uuid = UUID.randomUUID()
             while (true) {
                 val frame = try {
                     incoming.receive()
-                }
-                catch (e: Exception) {
+                } catch (e: Exception) {
                     println("Hit an exception on our way! " + e.localizedMessage)
                     allPlayers[uuid]?.let {
-                        it.game?.let {
-                            it.removePlayer(uuid)
-                        }
+                        it.game?.removePlayer(uuid)
                     }
-                    if(allPlayers.containsKey(uuid)) {
+                    if (allPlayers.containsKey(uuid)) {
                         allPlayers.remove(uuid)
                     }
                     allPlayers.forEach {
@@ -89,7 +77,7 @@ suspend fun updatePlayerNumbers() {
 object PlayerNumberUpdater {
     fun run() {
         launch {
-            while(true) {
+            while (true) {
                 delay(5000)
                 updatePlayerNumbers()
             }
@@ -102,20 +90,19 @@ suspend fun DefaultWebSocketServerSession.handleMessage(uuid: UUID, message: Str
     updatePlayerNumbers()
     val player = allPlayers[uuid]
     val tokenized = message.split(" ")
-    if(player == null) {
-        if(tokenized[0].toLowerCase() == "name") {
-                allPlayers[uuid] = Player(uuid, this, tokenized[1], null, 0)
-                sendString("UUID $uuid")
-                updatePlayerNumbers()
-                val lobbies = games.filter { it.value.players.count() > 0 }.toList().sortedByDescending { it.second.players.count() }.map { Pair(it.first, it.second.players.count()) }
-                lobbies.forEach {
-                    sendString("LOBBY ${it.first} ${it.second}")
-                }
+    if (player == null) {
+        if (tokenized[0].toLowerCase() == "name") {
+            allPlayers[uuid] = Player(uuid, this, tokenized[1], null, 0)
+            sendString("UUID $uuid")
+            updatePlayerNumbers()
+            val lobbies = games.filter { it.value.players.count() > 0 }.toList().sortedByDescending { it.second.players.count() }.map { Pair(it.first, it.second.players.count()) }
+            lobbies.forEach {
+                sendString("LOBBY ${it.first} ${it.second}")
+            }
         }
         return
-    }
-    else {
-        when(tokenized[0].toLowerCase()) {
+    } else {
+        when (tokenized[0].toLowerCase()) {
             "whoami" -> {
                 sendString("PLAYER ${player.uuid} ${player.name} ${player.points}")
             }
@@ -128,11 +115,11 @@ suspend fun DefaultWebSocketServerSession.handleMessage(uuid: UUID, message: Str
                 game.addPlayer(player)
             }
         }
-        if(player.game == null) {
+        if (player.game == null) {
             sendString("not in game.")
             return
         }
-        when(tokenized[0].toLowerCase()) {
+        when (tokenized[0].toLowerCase()) {
             "lp" -> {
                 val players = (player.game?.players) ?: emptyList<Player>()
                 players.forEach {

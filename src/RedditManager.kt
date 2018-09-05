@@ -4,15 +4,9 @@ import kotlinx.coroutines.experimental.launch
 import net.dean.jraw.RedditClient
 import net.dean.jraw.http.OkHttpNetworkAdapter
 import net.dean.jraw.http.UserAgent
-import net.dean.jraw.models.Listing
-import net.dean.jraw.models.Submission
 import net.dean.jraw.models.SubredditSort
-import net.dean.jraw.models.TimePeriod
 import net.dean.jraw.oauth.Credentials
 import net.dean.jraw.oauth.OAuthHelper
-import net.dean.jraw.ratelimit.LeakyBucketRateLimiter
-import net.dean.jraw.ratelimit.NoopRateLimiter
-import java.util.concurrent.TimeUnit
 
 object RedditManager {
     val redditClient: RedditClient
@@ -26,18 +20,18 @@ object RedditManager {
     }
 
     fun getImages(g: GameMode): List<String> {
-        if(cached.containsKey(g) && (cached[g]?.count() ?: 0) > 10) {
+        if (cached.containsKey(g) && (cached[g]?.count() ?: 0) > 10) {
             return cached[g]!!
         }
-        val paginator = redditClient.subreddit(g.subreddit).posts().sorting(SubredditSort.TOP).timePeriod(TimePeriod.ALL).limit(500).build()
+        val paginator = redditClient.subreddit(g.subreddit).posts().sorting(SubredditSort.TOP).timePeriod(g.timeLimit).limit(500).build()
         val images = mutableListOf<String>()
         val iter = paginator.iterator()
-        while(iter.hasNext() && images.count() < g.limit) {
+        while (iter.hasNext() && images.count() < g.limit) {
             val thisPage = iter.next()
             thisPage.children.forEach {
-                if(it.url.contains("i.redd.it") || it.url.contains("i.imgur.com")) {
-                    if(it.url.contains(".jpg") || it.url.contains(".png")) {
-                        if(!it.isNsfw) {
+                if (it.url.contains("i.redd.it") || it.url.contains("i.imgur.com")) {
+                    if (it.url.contains(".jpg") || it.url.contains(".png")) {
+                        if (!it.isNsfw) {
                             images.add(it.url)
                         }
                     }
