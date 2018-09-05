@@ -37,7 +37,9 @@ object RedditManager {
             thisPage.children.forEach {
                 if(it.url.contains("i.redd.it") || it.url.contains("i.imgur.com")) {
                     if(it.url.contains(".jpg") || it.url.contains(".png")) {
-                        images.add(it.url)
+                        if(!it.isNsfw) {
+                            images.add(it.url)
+                        }
                     }
                 }
             }
