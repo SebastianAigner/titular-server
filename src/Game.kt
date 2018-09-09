@@ -3,6 +3,7 @@ package io.sebi
 import kotlinx.coroutines.experimental.delay
 import kotlinx.coroutines.experimental.launch
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 
 
 class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_TIME) {
@@ -15,28 +16,21 @@ class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_T
     suspend fun addPlayer(p: Player) {
         players += p
         p.game = this
-
         broadcast("PLAYER ${p.uuid} ${p.name} ${p.points}")
-
         println("Adding Player, inround:$inRound")
         if (inRound) {
             println("### MESSAGING ${p.name}!")
-
             p.socket.sendString("STARTROUND")
             p.socket.sendString("IMAGE $image")
             p.socket.sendString("TIME $timeRemaining")
             if (voteAllowed) {
-                p.socket.sendString("VOTENOW") //todo: provide function like p.sendViaSocket() to get rid of all the p.uuid stuff
+                p.socket.sendString("VOTENOW")
             }
-
         }
-
 
         players.forEach {
             p.socket.sendString("PLAYER ${it.uuid} ${it.name} ${it.points}")
         }
-
-
     }
 
     var image: String = "https://via.placeholder.com/600x400"
@@ -48,6 +42,7 @@ class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_T
     var inRound = false
 
     suspend fun startRound() {
+
         if (inRound) return
         launch {
             inRound = true
@@ -62,7 +57,7 @@ class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_T
             broadcast("IMAGE $image")
             guessAllowed = true
             broadcast("TIME $guessTime")
-            /*var*/ timeRemaining = guessTime
+            timeRemaining = guessTime
             while (timeRemaining > 0 && players.count() != guesses.count()) {
                 println("players: ${players.count()}, guesses: ${guesses.count()}")
                 timeRemaining--
@@ -85,14 +80,14 @@ class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_T
                 broadcast("POINT ${it.key.uuid} ${it.value}")
                 it.key.points += it.value
             }
-            guesses = mutableMapOf()
-            votes = mutableMapOf()
+            guesses.clear()
+            votes.clear()
             inRound = false
         }
     }
 
-    var guesses = mutableMapOf<Player, String>()
-    var votes = mutableMapOf<Player, Int>()
+    var guesses = ConcurrentHashMap<Player, String>()
+    var votes = ConcurrentHashMap<Player, Int>()
     var guessAllowed = false
     var voteAllowed = false
 
@@ -107,9 +102,10 @@ class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_T
     suspend fun vote(uuid: UUID) {
         if (!voteAllowed) return
         val pl = getPlayerFromUUID(uuid)
-        val oldVal = votes.getOrDefault(pl, 0)
-        votes[pl] = oldVal + 1
-        println("Voting for player $uuid, now has ${oldVal + 1} points")
+        //val oldVal = votes.getOrDefault(pl, 0)
+        //votes[pl] = oldVal + 1
+        val newVal = votes.compute(pl) { _, oldVal -> (oldVal ?: 0) + 1 }
+        println("Voting for player $uuid, now has $newVal points")
         broadcast("VOTE_INDICATOR")
     }
 
@@ -128,7 +124,9 @@ class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_T
     private fun checkIfEmpty() {
         if (players.isEmpty()) {
             println("Removing game from rotation. Previously: ${games.count()} games.")
-            games.remove(games.filter { it.value == this }.map { it.key }.first())
+            games.entries.find { it.value == this }?.key?.let {
+                games -= it
+            }
             println("Now: ${games.count()} games.")
         }
     }
