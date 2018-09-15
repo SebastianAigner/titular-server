@@ -79,7 +79,7 @@ class Game(val lobbyName: LobbyName, var players: Set<Player>, var gamemode: Gam
             broadcast("TIME $voteTime")
             voteAllowed = true
             timeRemaining = voteTime
-            while (timeRemaining > 0 && players.count() != votes.values.sum()) {
+            while (timeRemaining > 0 && guesses.count() != votes.values.sum()) {
                 timeRemaining--
                 delay(1000)
             }
