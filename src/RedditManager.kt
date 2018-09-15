@@ -6,6 +6,8 @@ import net.dean.jraw.http.UserAgent
 import net.dean.jraw.models.SubredditSort
 import net.dean.jraw.oauth.Credentials
 import net.dean.jraw.oauth.OAuthHelper
+import net.dean.jraw.ratelimit.LeakyBucketRateLimiter
+import java.util.concurrent.TimeUnit
 
 object RedditManager {
     val redditClient: RedditClient
@@ -17,6 +19,7 @@ object RedditManager {
         val creds = Credentials.script(System.getenv("REDDIT_USERNAME"), System.getenv("REDDIT_PASSWORD"), System.getenv("REDDIT_CLIENT_ID"), System.getenv("REDDIT_CLIENT_SECRET"))
         val adapter = OkHttpNetworkAdapter(ua)
         redditClient = OAuthHelper.automatic(adapter, creds)
+        redditClient.rateLimiter = LeakyBucketRateLimiter(60, 1, TimeUnit.SECONDS).apply { refill(60) }
     }
 
     fun getImages(g: GameMode): List<String> {
