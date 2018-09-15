@@ -107,13 +107,11 @@ class Game(val lobbyName: LobbyName, var players: Set<Player>, var gamemode: Gam
         broadcast("GUESS ${p.uuid} $s")
     }
 
-    fun getPlayerFromUUID(uuid: UUID) = players.first { it.uuid == uuid }
+    fun getPlayerFromUUID(uuid: UUID) = players.firstOrNull { it.uuid == uuid }
 
     suspend fun vote(uuid: UUID) {
         if (!voteAllowed) return
-        val pl = getPlayerFromUUID(uuid)
-        //val oldVal = votes.getOrDefault(pl, 0)
-        //votes[pl] = oldVal + 1
+        val pl = getPlayerFromUUID(uuid) ?: return
         val newVal = votes.compute(pl) { _, oldVal -> (oldVal ?: 0) + 1 }
         println("Voting for player $uuid, now has $newVal points")
         broadcast("VOTE_INDICATOR")
