@@ -6,7 +6,7 @@ import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
 
-class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_TIME) {
+class Game(val lobbyName: LobbyName, var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_TIME) {
     suspend fun broadcast(str: String) {
         players.forEach {
             it.socket.sendString(str)
@@ -30,6 +30,16 @@ class Game(var players: Set<Player>, var gamemode: GameMode = GameMode.TOP_ALL_T
 
         players.forEach {
             p.socket.sendString("PLAYER ${it.uuid} ${it.name} ${it.points}")
+        }
+
+        allPlayers.values.map {
+            it.socket.sendString("LOBBY $lobbyName ${players.count()}")
+        }
+
+        if (inRound) {
+            guesses.forEach {
+                p.socket.sendString("GUESS ${it.key.uuid} ${it.value}")
+            }
         }
     }
 

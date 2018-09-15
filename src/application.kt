@@ -19,6 +19,16 @@ import java.util.concurrent.ConcurrentHashMap
 
 fun main(args: Array<String>): Unit = io.ktor.server.netty.DevelopmentEngine.main(args)
 
+suspend fun cleanupOnDisconnect(uuid: UUID) {
+    allPlayers[uuid]?.let {
+        it.game?.removePlayer(uuid)
+    }
+    allPlayers -= uuid
+    allPlayers.forEach {
+        it.value.socket.sendString("NOPLAYERS ${allPlayers.count()}")
+    }
+}
+
 @Suppress("unused") // Referenced in application.conf
 fun Application.module() {
     install(io.ktor.websocket.WebSockets) {
@@ -45,18 +55,16 @@ fun Application.module() {
                     incoming.receive()
                 } catch (e: Exception) {
                     println("Hit an exception on our way! " + e.localizedMessage)
-                    allPlayers[uuid]?.let {
-                        it.game?.removePlayer(uuid)
-                    }
-                    allPlayers -= uuid
-                    allPlayers.forEach {
-                        it.value.socket.sendString("NOPLAYERS ${allPlayers.count()}")
-                    }
+                    cleanupOnDisconnect(uuid)
                     return@webSocket
                 }
                 if (frame is Frame.Text) {
                     val txt = frame.readText()
                     handleMessage(uuid, txt)
+                }
+                if (frame is Frame.Close) {
+                    cleanupOnDisconnect(uuid)
+                    return@webSocket
                 }
             }
         }
@@ -102,7 +110,7 @@ suspend fun DefaultWebSocketServerSession.handleMessage(uuid: UUID, message: Str
         when (tokenized[0].toLowerCase()) {
             "whoami" -> sendString("PLAYER ${player.uuid} ${player.name} ${player.points}")
             "game" -> {
-                val game = games.getOrPut(tokenized[1]) { Game(mutableSetOf()) }
+                val game = games.getOrPut(tokenized[1]) { Game(tokenized[1], mutableSetOf()) }
                 sendString("Welcome to Game #${tokenized[1]}")
                 sendString("JOINED ${tokenized[1]}")
                 game.addPlayer(player)
@@ -122,5 +130,10 @@ suspend fun DefaultWebSocketServerSession.handleMessage(uuid: UUID, message: Str
 
 suspend fun DefaultWebSocketServerSession.sendString(str: String) {
     println("Sending: $str")
-    send(Frame.Text(str))
+    try {
+        send(Frame.Text(str))
+    } catch (e: Exception) {
+        println(e.localizedMessage)
+    }
+
 }
